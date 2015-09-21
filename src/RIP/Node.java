@@ -22,8 +22,12 @@ public class Node {
 	private static int MAX_NODES = 4; // numero de nodes corrente
 	private NodeList nodeList = new NodeList(MAX_NODES);
 	
+	private int round;
+	
 	public Node(int i){
 		id = new Integer(i);
+		
+		round=0;
 		
 		System.out.println("Node "+id+" created.");
 	}
@@ -109,12 +113,12 @@ public class Node {
 			
 		}
 		
-		imprime(0);
+		imprime(round); round++;
 	}
 
 	public void update() throws IOException {
 		// seriam os deuses astronautas?
-		
+		System.out.println("Update do "+id);
 		// seriam os sockets colocados aqui?
 		
 		ServerSocket Server = new ServerSocket(9001);
@@ -135,7 +139,8 @@ public class Node {
 			@Override public void run() {
 				while(true){
 					try {
-						sendMessage(outputClient);
+						System.out.println("Tentando enviar mensagem");
+						sendMessage(outputClient);  // ENVIA MENSAGEM
 					} catch (IOException ex) {
 						Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
 					}
@@ -148,7 +153,8 @@ public class Node {
 			@Override public void run() {
 				while(true){
 					try {
-						receiveMessage(inputServer);
+						System.out.println("Tentando receber mensagem");
+						receiveMessage(inputServer); // RECEBE MENSAGEM
 					} catch (IOException ex) {
 						Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
 					}
@@ -162,8 +168,8 @@ public class Node {
 	public void sendMessage(DataOutputStream os) throws IOException{
 		int i;
 		
-		for(i=0; i<MAX_NODES; i++){
-			synchronized(this){
+		synchronized(this){
+			for(i=0; i<MAX_NODES; i++){
 				if(nodeList.getReachable(i)){
 					Integer cost = nodeList.getCost(i);
 					
@@ -200,13 +206,13 @@ public class Node {
 			}
 		}
 		
-		imprime(1);
+		imprime(round); round++;
 		
 	}
 	
-	public void imprime(int round) {
+	public void imprime(int r) {
 		System.out.print(
-		"round "+round+"||------- custos -> nós ---------|\n"
+			"round "+r+"||------- custos -> nós ---------|\n"
 			  + "| nó   ||   0   |   1   |   2   |   3   |\n"
 			  + "|------||-------------------------------|\n"
 			  + "|   "+id+"  ||");

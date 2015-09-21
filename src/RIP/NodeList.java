@@ -16,9 +16,16 @@ public class NodeList {
 	private HashMap<Integer, Boolean> isDirReachable = new HashMap(); // se é diretamente alcançável por id
 	private HashMap<Integer, Integer> cost = new HashMap(); // qual o custo por id
 
-	/*public NodeList(ArrayList<Integer> i) {
-		idList = i;
-	}*/
+	public NodeList(int numNodes) {
+		//idList = i;
+		
+		// inicializa os HashMaps
+		for(int i=0; i<numNodes; i++){
+			isDirReachable.put(i, false);
+			cost.put(i, -1);
+		}
+		
+	}
 
 	public void addReachable(Integer id) {
 		isDirReachable.put(id, true);
@@ -34,22 +41,6 @@ public class NodeList {
 
 	public Integer getCost(Integer id) {
 		return cost.get(id);
-	}
-
-	public void imprime(int round) {
-		System.out.println(
-		"round "+round+"||------- custos -> nós ---------|\n"
-			  + "| nós  ||   0   |   1   |   2   |   3   |\n"
-			  + "|------||-------------------------------|\n"
-			  + "|   0  ||   x   |   x   |   x   |   x   |\n"
-			  + "|------||-------------------------------|\n"
-			  + "|   1  ||   x   |   x   |   x   |   x   |\n"
-			  + "|------||-------------------------------|\n"
-			  + "|   2  ||   x   |   x   |   x   |   x   |\n"
-			  + "|------||-------------------------------|\n"
-			  + "|   3  ||   x   |   x   |   x   |   x   |\n"
-			  + "|------||-------------------------------|\n");
-	
 	}
     
 }

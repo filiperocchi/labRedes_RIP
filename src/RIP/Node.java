@@ -19,8 +19,8 @@ import java.util.logging.Logger;
 public class Node {
 
 	private Integer id;
-	private NodeList nodeList = new NodeList();
 	private static int MAX_NODES = 4; // numero de nodes corrente
+	private NodeList nodeList = new NodeList(MAX_NODES);
 	
 	public Node(int i){
 		id = new Integer(i);
@@ -91,7 +91,7 @@ public class Node {
 		}
 		
 		// rotina de inicio do no 3
-		if (id == 2) {
+		if (id == 3) {
 			// no 0
 			nodeList.addReachable(0);
 			nodeList.updateCost(0, 7);
@@ -109,7 +109,7 @@ public class Node {
 			
 		}
 		
-		nodeList.imprime(0);
+		imprime(0);
 	}
 
 	public void update() throws IOException {
@@ -200,10 +200,27 @@ public class Node {
 			}
 		}
 		
-		nodeList.imprime(1);
+		imprime(1);
 		
 	}
 	
+	public void imprime(int round) {
+		System.out.print(
+		"round "+round+"||------- custos -> nós ---------|\n"
+			  + "| nó   ||   0   |   1   |   2   |   3   |\n"
+			  + "|------||-------------------------------|\n"
+			  + "|   "+id+"  ||");
+		
+		for(int i=0; i<MAX_NODES; i++){
+			if(nodeList.getReachable(i)){
+				System.out.print("   "+nodeList.getCost(i)+"   |");
+			}
+			else{
+				System.out.print("  inf  |");
+			}
+		}
+		System.out.println("");
+	}
 }
 
 // Modelo de impressão

@@ -3,19 +3,33 @@
  Laboratório de Redes de Computadores - Prof. Fábio
     
  Filipe Santos Rocchi 552194
- Rafael Brandão barbosa Fairbanks 552372
+ Rafael Brandão Barbosa Fairbanks 552372
  */
 package RIP;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 
 public class Node {
 
 	private Integer id;
-	private NodeList nodeList;
+	private NodeList nodeList = new NodeList();
+	private static int MAX_NODES = 4; // numero de nodes corrente
+	
+	public Node(int i){
+		id = new Integer(i);
+		
+		System.out.println("Node "+id+" created.");
+	}
 
 	public void init() {
+		System.out.println("Node "+id+" init...");
 		
 		// rotina de inicio do no 0
 		if (id == 0) {
@@ -95,11 +109,101 @@ public class Node {
 			
 		}
 		
+		nodeList.imprime(0);
 	}
 
-	public void update() {
+	public void update() throws IOException {
+		// seriam os deuses astronautas?
+		
+		// seriam os sockets colocados aqui?
+		
+		ServerSocket Server = new ServerSocket(9001);
+		Socket serviceSocket = Server.accept();
+		DataInputStream inputServer = new DataInputStream(serviceSocket.getInputStream());
+		DataOutputStream outputServer = new DataOutputStream(serviceSocket.getOutputStream());
+		
+		Socket Client = new Socket("client"+id, 9001);
+		DataInputStream inputClient = new DataInputStream(Client.getInputStream());
+		DataOutputStream outputClient = new DataOutputStream(Client.getOutputStream());
+		
+		
+		// é aqui que cria threads para o cliente e servidor
+		// ambos devem operar independentes
+		
+		// Thread para cliente: enviar mensagens
+		new Thread() {
+			@Override public void run() {
+				while(true){
+					try {
+						sendMessage(outputClient);
+					} catch (IOException ex) {
+						Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+					}
+				}
+			}
+		}.start();
+		
+		// Thread para servidor: receber mensagens
+		new Thread() {
+			@Override public void run() {
+				while(true){
+					try {
+						receiveMessage(inputServer);
+					} catch (IOException ex) {
+						Logger.getLogger(Node.class.getName()).log(Level.SEVERE, null, ex);
+					}
+				}
+			} 
+		}.start();
 		
 	}
+	
+	
+	public void sendMessage(DataOutputStream os) throws IOException{
+		int i;
+		
+		for(i=0; i<MAX_NODES; i++){
+			synchronized(this){
+				if(nodeList.getReachable(i)){
+					Integer cost = nodeList.getCost(i);
+					
+					System.out.println("Mandando: "+i+","+cost+","+id);
+					
+					os.writeBytes(i+","+cost+","+id);
+				}
+			}
+		}
+	
+	}
+	
+	public void receiveMessage(DataInputStream is) throws IOException{
+		String line = is.readLine();
+		
+		System.out.println("Chegou: "+line);
+		
+		Integer idNodeMsg = (int )line.charAt(0);
+		Integer costNodeMsg = (int )line.charAt(2);
+		Integer idRemetente = (int )line.charAt(4);
+		
+		synchronized(this){
+			if(nodeList.getReachable(idRemetente)){ // limita aos remetentes alcancaveis
+				if(nodeList.getReachable(idNodeMsg)){ // se quem chegou na msg for alcancavel
+					// compara os valores do custo existente com o novo
+					if(nodeList.getCost(idNodeMsg) > costNodeMsg+nodeList.getCost(idRemetente)){
+						nodeList.updateCost(idNodeMsg, costNodeMsg+nodeList.getCost(idRemetente));
+					}
+				}
+				else{ // se nao for alcancavel, adiciona como alcancavel e com o novo custo
+					nodeList.addReachable(idNodeMsg);
+					nodeList.updateCost(idNodeMsg, costNodeMsg+nodeList.getCost(idRemetente));
+				}
+			}
+		}
+		
+		nodeList.imprime(1);
+		
+	}
+	
 }
 
 // Modelo de impressão

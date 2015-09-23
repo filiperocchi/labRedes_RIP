@@ -10,19 +10,25 @@ package RIP;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Node extends Thread{
 	
-	private static Boolean debug = false;
-	private static Boolean clean = false;
+	private static final Boolean debug = false;
+	private static final Boolean clean = true;
 	
-	public static ArrayList<Node> nodeList = new ArrayList<Node>();
-	public static Integer NUM_NODES = 4;
+	public static final ArrayList<Node> nodeList = new ArrayList<Node>();
+	public static final Integer NUM_NODES = 4;
 	
-	private Integer id;
-	private HashMap<Integer, Line> table; // id do no ligado na tabela
+	private static final Object printLock = new Object();
 	
-	private Boolean update; // para saber quando é necessário mandar a tabela
+	
+	public final Integer id;
+	private final HashMap<Integer, Line> table; // id do nó ligado na tabela
+	
+	private final Queue<Message> msgsToDo;
 	
 	private Integer clock;
 	
@@ -32,7 +38,7 @@ public class Node extends Thread{
 		
 		table = new HashMap<Integer, Line>();
 		
-		update = true;
+		msgsToDo = new ConcurrentLinkedQueue<Message>();
 		
 		clock = new Integer(0);
 		
@@ -79,77 +85,108 @@ public class Node extends Thread{
 	
 	public void sendTable(){
 		for(Node n : nodeList){ // para os nos existentes
-			if(table.get(n.id)!=null){ // dos que forem diretamente conectados
-				n.receiveTable(this.id, this.table); // envia a própria tabela
+			if(n.id != this.id && table.get(n.id)!=null){ // dos que forem diretamente conectados
+				//n.receiveTable(this.id, this.table); // envia a própria tabela
+				n.receiveMsg(new Message(this.id, this.table));
 			}
 		}
 	}
 	
-	public synchronized void receiveTable(Integer idSender, HashMap<Integer, Line> t){
+	public void receiveMsg(Message m)
+	{
+		msgsToDo.add(m);
+	}
+	
+	public void processMsg(Message m){ // receber custo do caminho mais curto de idSender para todos os outros nós
 		
-		Boolean change = false;
+		if(m == null) throw new RuntimeException();
 		
-		for(int i=0; i<NUM_NODES; i++){ // para todos os nós
-			if(t.get(i)!=null){ // se ele existir na tabela que chegou
-				if(debug) System.out.println(id+" - recebendo nó do "+idSender);
-				if(table.get(i)!=null){ // se ele existir na minha tabela já
-					if(debug) System.out.println(id+" - nó "+i+" já existia na minha tabela");
-					Line original, nova;
+		Integer idSender = m.idSender;
+		HashMap<Integer, Line> t = m.msgTable;
+		
+		Boolean changed = false;
+		
+		for (Map.Entry<Integer, Line> entry : t.entrySet())
+		{
+			if(debug) System.out.println(id+" - recebendo nó do "+idSender);
+
+			if(table.get(entry.getKey()) != null) // se ele existir na minha tabela já
+			{
+				if(debug) System.out.println(id+" - nó "+entry.getKey()+" já existia na minha tabela");
+
+				Line original = table.get(entry.getKey());
+				
+				Line nova = entry.getValue();
+
+				// compara o custo já existente com o custo que veio na msg+custo até quem enviou
+				if(original.getCost() > 
+				   nova.getCost() + 
+				   table.get(idSender) //////////////
+						   .getCost())
+				{
+					if(debug) System.out.println(id+" - atualizando custo do no "+entry.getKey());
+					// se for melhor o novo, atualiza
+
+					//System.out.println(id+" - nova getCost: "+nova.getCost());
+					original.updateCost(nova.getCost() + table.get(idSender).getCost(), idSender);
 					
-					original = table.get(i);
-					nova = t.get(i);
-					
-					// compara o custo já existente com o custo que veio na msg+custo até quem enviou
-					if(original.getCost() > nova.getCost()+table.get(idSender).getCost()){
-						if(debug) System.out.println(id+" - atualizando custo do no "+i);
-						// se for melhor o novo, atualiza
-						
-						System.out.println(id+" - nova getCost: "+nova.getCost());
-						original.updateCost(nova.getCost()+table.get(idSender).getCost(), idSender);
-						change = true;
-					}
-					
+					changed = true;
 				}
-				else{
-					if(debug) System.out.println(id+" - adicionando o nó "+i+" que não conhecia");
-					table.put(i, new Line(i, t.get(i).getCost()+table.get(idSender).getCost(), idSender));
-				}
+
+			}
+			
+			else
+			{
+				if(debug) System.out.println(id+" - adicionando o nó "+entry.getKey()+" que não conhecia");
+				
+				table.put(entry.getKey(), new Line(entry.getKey(), entry.getValue().getCost() + table.get(idSender).getCost(), idSender));
+				
+				changed = true;
 			}
 		}
 		
-		if(change){
-			update = true;
+		if(changed)
+		{
+			sendTable();
+			printTable();
 			clock++;
 		}
 	}
 	
-	public synchronized void printTable(){
+	public void printTable(){
 		
-		System.out.println("\nImprimindo tabela do nó: "+id+", clock:"+clock);
-		System.out.println("no | custo | proximo");
-		
-		for(int i=0; i<NUM_NODES; i++){
-			if(table.get(i)!=null){
-				table.get(i).printLine();
-			}
-		}
-		System.out.println();
-	}
-	
-	@Override public void run(){
-		if(!clean) System.out.println("Node "+id+" começou");
-		// Thread para enviar mensagens
-		new Thread() {
-			@Override public void run() {
-				while(true){
-					if(update==true){
-						update = false;
-						sendTable();
-						printTable();
-					}
+		synchronized(printLock)
+		{
+			System.out.println("\nImprimindo tabela do nó: "+id+", clock:"+clock);
+			System.out.println("no | custo | proximo");
+
+			for(int i=0; i<NUM_NODES; i++){
+				if(table.get(i)!=null){
+					table.get(i).printLine();
 				}
 			}
-		}.start();
+			System.out.println();
+		}
+	}
+	
+	@Override public void run()
+	{
+		if(!clean) System.out.println("Node "+id+" começou");
+		
+		// envia custos uma vez após inicialização
+		sendTable();
+		printTable();
+		
+		while(true)
+		{
+			Message m = msgsToDo.poll();
+			
+			while(m != null)
+			{
+				processMsg(m);
+				m = msgsToDo.poll();
+			}
+		}
 	}
 }
 

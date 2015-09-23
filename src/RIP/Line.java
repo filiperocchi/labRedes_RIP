@@ -9,15 +9,15 @@
 package RIP;
 
 class Line {
-	public Integer idNode; // id do no cujo custo está ligado
-	private Integer cost; //custo do hop
-	private Integer idNextHop; // hop atraves de que no chega no idNode
+	public Integer idNode; // id do nó alvo cujo custo está ligado
+	private Integer cost; //custo do hop // custo (do dono da line) até o alvo, através do nextHop?
+	private Integer idNextHop; // hop atraves de que nó chega no idNode
 	
 	public Line(Integer in, Integer c, Integer irh){
 		idNode = in;
 		cost = c;
 		idNextHop = irh;
-		System.out.println("Linha inserida: idNode: "+idNode+", custo: "+cost+", idHop: "+idNextHop);
+		//System.out.println("Linha inserida: idNode: "+idNode+", custo: "+cost+", idHop: "+idNextHop);
 	}
 	
 	public void updateCost(Integer c, Integer irh){
